@@ -1,1 +1,11 @@
+
 project_id = "mbjldjsdkxibnmkxswjh"
+
+[functions.analyze-login-page]
+verify_jwt = false
+
+[functions.save-form]
+verify_jwt = false
+
+[functions.forms]
+verify_jwt = false

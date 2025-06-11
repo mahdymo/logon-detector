@@ -9,7 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      detected_fields: {
+        Row: {
+          detected_at: string
+          field_type: string
+          id: string
+          label: string | null
+          placeholder: string | null
+          required: boolean
+          selector: string
+          url: string
+        }
+        Insert: {
+          detected_at?: string
+          field_type: string
+          id?: string
+          label?: string | null
+          placeholder?: string | null
+          required?: boolean
+          selector: string
+          url: string
+        }
+        Update: {
+          detected_at?: string
+          field_type?: string
+          id?: string
+          label?: string | null
+          placeholder?: string | null
+          required?: boolean
+          selector?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      generated_forms: {
+        Row: {
+          created_at: string
+          fields: Json
+          html_code: string
+          id: string
+          target_url: string
+        }
+        Insert: {
+          created_at?: string
+          fields: Json
+          html_code: string
+          id?: string
+          target_url: string
+        }
+        Update: {
+          created_at?: string
+          fields?: Json
+          html_code?: string
+          id?: string
+          target_url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

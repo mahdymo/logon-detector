@@ -23,11 +23,12 @@ export class LoginDetector {
     try {
       console.log(`Starting analysis of: ${url}`);
       
-      // Call our backend API endpoint
-      const response = await fetch('/api/analyze-login-page', {
+      // Call our Supabase Edge Function
+      const response = await fetch('https://mbjldjsdkxibnmkxswjh.supabase.co/functions/v1/analyze-login-page', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1iamxkanNka3hpYm5ta3hzd2poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2ODIzNzYsImV4cCI6MjA2NTI1ODM3Nn0.TSPkKdMgD79grpkzQ6mnJP3fozp2MX5spJQ_VvrCb-E`
         },
         body: JSON.stringify({ url }),
       });
@@ -48,7 +49,7 @@ export class LoginDetector {
     } catch (error) {
       console.error('Error analyzing login page:', error);
       
-      // Fallback to mock data for development
+      // Fallback to mock data for development/demo purposes
       console.log('Falling back to mock data...');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
