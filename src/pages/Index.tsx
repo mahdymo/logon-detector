@@ -1,10 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UrlInputForm } from '@/components/UrlInputForm';
 import { LoginFormDetector } from '@/components/LoginFormDetector';
 import { GeneratedLoginForm } from '@/components/GeneratedLoginForm';
+import { FormHistory } from '@/components/FormHistory';
 import { LoginDetector } from '@/utils/loginDetector';
-import { Shield, Zap, Target } from 'lucide-react';
+import { FormGenerator } from '@/utils/formGenerator';
+import { Shield, Zap, Target, Database } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface DetectedField {
   type: 'username' | 'email' | 'password' | 'submit' | 'other';
@@ -18,6 +21,21 @@ const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
   const [analyzedUrl, setAnalyzedUrl] = useState('');
+  const [savedForms, setSavedForms] = useState([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadSavedForms();
+  }, []);
+
+  const loadSavedForms = async () => {
+    try {
+      const forms = await FormGenerator.loadGeneratedForms();
+      setSavedForms(forms);
+    } catch (error) {
+      console.error('Failed to load saved forms:', error);
+    }
+  };
 
   const handleAnalyze = async (url: string) => {
     setIsAnalyzing(true);
@@ -26,11 +44,47 @@ const Index = () => {
     try {
       const fields = await LoginDetector.analyzeLoginPage(url);
       setDetectedFields(fields);
+      
+      toast({
+        title: "Analysis Complete",
+        description: `Found ${fields.length} login fields`,
+        duration: 3000,
+      });
+      
     } catch (error) {
       console.error('Error analyzing login page:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to analyze the page. Please check the URL and try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
       setDetectedFields([]);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleSaveForm = async () => {
+    if (!analyzedUrl || detectedFields.length === 0) return;
+    
+    try {
+      await FormGenerator.saveGeneratedForm(analyzedUrl, detectedFields);
+      await loadSavedForms();
+      
+      toast({
+        title: "Form Saved",
+        description: "Generated form has been saved successfully",
+        duration: 3000,
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Unable to save the form. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
     }
   };
 
@@ -63,37 +117,49 @@ const Index = () => {
               <Shield className="h-5 w-5 text-blue-400" />
               <span>Security Focused</span>
             </div>
+            <div className="flex items-center gap-2 text-slate-400">
+              <Database className="h-5 w-5 text-purple-400" />
+              <span>Form Storage</span>
+            </div>
           </div>
         </div>
 
         {/* Main content */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
           {/* Input Form */}
-          <div className="lg:col-span-1">
+          <div>
             <UrlInputForm onAnalyze={handleAnalyze} isLoading={isAnalyzing} />
           </div>
 
           {/* Detection Results */}
-          <div className="lg:col-span-1">
+          <div>
             <LoginFormDetector 
               detectedFields={detectedFields} 
               isAnalyzing={isAnalyzing}
             />
           </div>
+        </div>
 
-          {/* Generated Form */}
-          <div className="lg:col-span-1">
+        {/* Generated Form */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div>
             <GeneratedLoginForm 
               detectedFields={detectedFields}
               targetUrl={analyzedUrl}
+              onSave={handleSaveForm}
             />
+          </div>
+
+          {/* Form History */}
+          <div>
+            <FormHistory savedForms={savedForms} onRefresh={loadSavedForms} />
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center mt-12 pt-8 border-t border-slate-800">
           <p className="text-slate-500 text-sm">
-            Built for security researchers and developers
+            Built for security researchers and developers • Backend powered by Supabase
           </p>
         </div>
       </div>

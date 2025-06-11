@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Code, Copy, Play } from "lucide-react";
+import { Code, Copy, Play, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DetectedField {
@@ -18,9 +18,10 @@ interface DetectedField {
 interface GeneratedLoginFormProps {
   detectedFields: DetectedField[];
   targetUrl: string;
+  onSave?: () => void;
 }
 
-export const GeneratedLoginForm = ({ detectedFields, targetUrl }: GeneratedLoginFormProps) => {
+export const GeneratedLoginForm = ({ detectedFields, targetUrl, onSave }: GeneratedLoginFormProps) => {
   const { toast } = useToast();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [showCode, setShowCode] = useState(false);
@@ -105,6 +106,17 @@ ${fields.map(field => `  <div>
             <Copy className="h-4 w-4 mr-1" />
             Copy
           </Button>
+          {onSave && targetUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSave}
+              className="text-slate-300 border-slate-600"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              Save
+            </Button>
+          )}
         </div>
       </div>
 
