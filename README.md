@@ -1,73 +1,108 @@
-# Welcome to your Lovable project
 
-## Project info
+# Login Page Detector - Microservices Architecture
 
-**URL**: https://lovable.dev/projects/5109aafc-5b60-4c96-99b2-6256a39efd67
+A distributed login page analysis tool built with microservices architecture for local hosting.
 
-## How can I edit this code?
+## Architecture
 
-There are several ways of editing your application.
+- **Frontend**: React + TypeScript + Tailwind CSS
+- **API Gateway**: Express.js proxy server (Port 3000)
+- **Analyzer Service**: Login page analysis microservice (Port 3001)
+- **Form Service**: Form storage and retrieval microservice (Port 3002)
+- **Database**: PostgreSQL (Port 5432)
 
-**Use Lovable**
+## Quick Start
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5109aafc-5b60-4c96-99b2-6256a39efd67) and start prompting.
+### Prerequisites
+- Docker and Docker Compose
+- Node.js 18+ (for development)
 
-Changes made via Lovable will be committed automatically to this repo.
+### Running with Docker
 
-**Use your preferred IDE**
+1. Start all services:
+```bash
+docker-compose up -d
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. The application will be available at:
+- Frontend: http://localhost:5173
+- API Gateway: http://localhost:3000
+- Database: localhost:5432
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Development Setup
 
-Follow these steps:
+1. Install frontend dependencies:
+```bash
+npm install
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Start the microservices:
+```bash
+docker-compose up -d postgres analyzer-service form-service api-gateway
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Start the frontend:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Manual Service Setup (without Docker)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Start PostgreSQL and run the database initialization script from `database/init.sql`
 
-**Use GitHub Codespaces**
+2. Start each microservice:
+```bash
+# Terminal 1 - Analyzer Service
+cd services/analyzer
+npm install
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/login_detector npm start
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Terminal 2 - Form Service
+cd services/forms
+npm install
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/login_detector npm start
 
-## What technologies are used for this project?
+# Terminal 3 - API Gateway
+cd services/gateway
+npm install
+ANALYZER_SERVICE_URL=http://localhost:3001 FORM_SERVICE_URL=http://localhost:3002 npm start
+```
 
-This project is built with:
+## API Endpoints
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### API Gateway (Port 3000)
+- `POST /api/analyze` - Analyze login page
+- `POST /api/forms/save` - Save generated form
+- `GET /api/forms/list` - Get saved forms
 
-## How can I deploy this project?
+### Individual Services
+- Analyzer Service: http://localhost:3001
+- Form Service: http://localhost:3002
 
-Simply open [Lovable](https://lovable.dev/projects/5109aafc-5b60-4c96-99b2-6256a39efd67) and click on Share -> Publish.
+## Environment Variables
 
-## Can I connect a custom domain to my Lovable project?
+### Database
+- `DATABASE_URL`: PostgreSQL connection string
 
-Yes, you can!
+### API Gateway
+- `ANALYZER_SERVICE_URL`: URL of analyzer service
+- `FORM_SERVICE_URL`: URL of form service
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Service Health Checks
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Each service provides a health check endpoint:
+- `GET /health`
+
+## Database Schema
+
+The application uses PostgreSQL with the following tables:
+- `detected_fields`: Stores analyzed login field data
+- `generated_forms`: Stores generated form configurations
+
+## Development Notes
+
+- All services are containerized for easy deployment
+- CORS is enabled for local development
+- Services communicate through the API Gateway
+- Database connection pooling is implemented for performance
+- Each microservice has its own package.json and dependencies

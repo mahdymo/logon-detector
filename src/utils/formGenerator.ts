@@ -20,11 +20,10 @@ export class FormGenerator {
     try {
       const htmlCode = this.generateFormHTML(targetUrl, fields);
       
-      const response = await fetch('https://mbjldjsdkxibnmkxswjh.supabase.co/functions/v1/save-form', {
+      const response = await fetch('http://localhost:3000/api/forms/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1iamxkanNka3hpYm5ta3hzd2poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2ODIzNzYsImV4cCI6MjA2NTI1ODM3Nn0.TSPkKdMgD79grpkzQ6mnJP3fozp2MX5spJQ_VvrCb-E`
         },
         body: JSON.stringify({
           target_url: targetUrl,
@@ -48,11 +47,7 @@ export class FormGenerator {
 
   static async loadGeneratedForms(): Promise<GeneratedForm[]> {
     try {
-      const response = await fetch('https://mbjldjsdkxibnmkxswjh.supabase.co/functions/v1/forms', {
-        headers: {
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1iamxkanNka3hpYm5ta3hzd2poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2ODIzNzYsImV4cCI6MjA2NTI1ODM3Nn0.TSPkKdMgD79grpkzQ6mnJP3fozp2MX5spJQ_VvrCb-E`
-        }
-      });
+      const response = await fetch('http://localhost:3000/api/forms/list');
       
       if (!response.ok) {
         throw new Error('Failed to load forms');
