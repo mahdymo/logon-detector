@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "0.0.0.0:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,7 +21,7 @@ services:
       context: ./services/analyzer
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "0.0.0.0:3001:3001"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/login_detector
       - PORT=3001
@@ -34,7 +34,7 @@ services:
       context: ./services/forms
       dockerfile: Dockerfile
     ports:
-      - "3002:3002"
+      - "0.0.0.0:3002:3002"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/login_detector
       - PORT=3002
@@ -47,7 +47,7 @@ services:
       context: ./services/gateway
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "0.0.0.0:3000:3000"
     environment:
       - ANALYZER_SERVICE_URL=http://analyzer-service:3001
       - FORM_SERVICE_URL=http://form-service:3002

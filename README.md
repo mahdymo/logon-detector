@@ -29,6 +29,19 @@ docker-compose up -d
 - API Gateway: http://localhost:3000
 - Database: localhost:5432
 
+### External Access
+
+The services are configured to be accessible from outside localhost. You can access them using your machine's IP address:
+
+- API Gateway: http://YOUR_IP:3000
+- Analyzer Service: http://YOUR_IP:3001
+- Form Service: http://YOUR_IP:3002
+- Database: YOUR_IP:5432
+
+To find your IP address:
+- **Linux/Mac**: `ip addr show` or `ifconfig`
+- **Windows**: `ipconfig`
+
 ### Development Setup
 
 1. Install frontend dependencies:
@@ -88,6 +101,21 @@ ANALYZER_SERVICE_URL=http://localhost:3001 FORM_SERVICE_URL=http://localhost:300
 - `ANALYZER_SERVICE_URL`: URL of analyzer service
 - `FORM_SERVICE_URL`: URL of form service
 
+## Network Configuration
+
+### Firewall Settings
+If accessing from external machines, ensure these ports are open:
+- 3000 (API Gateway)
+- 3001 (Analyzer Service) 
+- 3002 (Form Service)
+- 5432 (PostgreSQL)
+
+### Security Considerations
+- The services are configured with CORS allowing all origins for development
+- For production, configure specific allowed origins in the CORS settings
+- Consider using environment variables for sensitive configuration
+- Use proper authentication and authorization for production deployments
+
 ## Service Health Checks
 
 Each service provides a health check endpoint:
@@ -102,7 +130,8 @@ The application uses PostgreSQL with the following tables:
 ## Development Notes
 
 - All services are containerized for easy deployment
-- CORS is enabled for local development
+- CORS is enabled for external access
 - Services communicate through the API Gateway
 - Database connection pooling is implemented for performance
 - Each microservice has its own package.json and dependencies
+- Services bind to 0.0.0.0 to accept connections from any interface

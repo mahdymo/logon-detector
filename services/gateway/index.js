@@ -7,7 +7,10 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins for external access
+  credentials: false
+}));
 app.use(express.json());
 
 // Health check for gateway
@@ -38,6 +41,6 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(port, () => {
-  console.log(`API Gateway running on port ${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`API Gateway running on port ${port} and accessible from all interfaces`);
 });

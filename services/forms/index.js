@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -12,7 +11,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins for external access
+  credentials: false
+}));
 app.use(express.json());
 
 // Save form endpoint
@@ -71,6 +73,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', service: 'forms' });
 });
 
-app.listen(port, () => {
-  console.log(`Form service running on port ${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Form service running on port ${port} and accessible from all interfaces`);
 });

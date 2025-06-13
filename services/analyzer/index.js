@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -13,7 +12,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins for external access
+  credentials: false
+}));
 app.use(express.json());
 
 // Analyze login page endpoint
@@ -174,6 +176,6 @@ function extractTitle(html) {
   return titleMatch?.[1]?.trim() || 'Unknown';
 }
 
-app.listen(port, () => {
-  console.log(`Analyzer service running on port ${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Analyzer service running on port ${port} and accessible from all interfaces`);
 });
