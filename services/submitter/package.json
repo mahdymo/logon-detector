@@ -1,8 +1,8 @@
 
 {
-  "name": "analyzer-service",
+  "name": "submitter-service",
   "version": "1.0.0",
-  "description": "Enhanced login page analyzer microservice",
+  "description": "Login submission microservice",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -12,10 +12,11 @@
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "pg": "^8.11.3",
-    "node-fetch": "^3.3.2",
     "puppeteer": "^21.5.2",
     "cheerio": "^1.0.0-rc.12",
-    "dotenv": "^16.3.1"
+    "tough-cookie": "^4.1.3",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

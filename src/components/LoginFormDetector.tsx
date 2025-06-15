@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, User, Lock, Mail } from "lucide-react";
+import { CheckCircle, AlertCircle, User, Lock, Mail, Shield, AlertTriangle } from "lucide-react";
 
 interface DetectedField {
   type: 'username' | 'email' | 'password' | 'submit' | 'other';
@@ -12,12 +12,18 @@ interface DetectedField {
   required: boolean;
 }
 
+interface SecurityFeature {
+  type: string;
+  details: any;
+}
+
 interface LoginFormDetectorProps {
   detectedFields: DetectedField[];
+  securityFeatures?: SecurityFeature[];
   isAnalyzing: boolean;
 }
 
-export const LoginFormDetector = ({ detectedFields, isAnalyzing }: LoginFormDetectorProps) => {
+export const LoginFormDetector = ({ detectedFields, securityFeatures = [], isAnalyzing }: LoginFormDetectorProps) => {
   const getFieldIcon = (type: string) => {
     switch (type) {
       case 'username':
@@ -38,6 +44,34 @@ export const LoginFormDetector = ({ detectedFields, isAnalyzing }: LoginFormDete
       case 'password':
         return 'bg-red-500';
       case 'submit':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getSecurityFeatureIcon = (type: string) => {
+    switch (type) {
+      case 'captcha':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'csrf':
+        return <Shield className="h-4 w-4" />;
+      case 'mfa':
+        return <Lock className="h-4 w-4" />;
+      default:
+        return <AlertCircle className="h-4 w-4" />;
+    }
+  };
+
+  const getSecurityFeatureColor = (type: string) => {
+    switch (type) {
+      case 'captcha':
+        return 'bg-yellow-500';
+      case 'csrf':
+        return 'bg-blue-500';
+      case 'mfa':
+        return 'bg-purple-500';
+      case 'oauth':
         return 'bg-green-500';
       default:
         return 'bg-gray-500';
@@ -67,35 +101,75 @@ export const LoginFormDetector = ({ detectedFields, isAnalyzing }: LoginFormDete
     <Card className="p-6 bg-slate-900 border-slate-700">
       <div className="flex items-center gap-3 mb-4">
         <CheckCircle className="h-6 w-6 text-green-400" />
-        <h3 className="text-lg font-semibold text-white">Detected Login Fields</h3>
+        <h3 className="text-lg font-semibold text-white">Detection Results</h3>
       </div>
       
-      {detectedFields.length > 0 ? (
-        <div className="space-y-3">
-          {detectedFields.map((field, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${getFieldColor(field.type)}`}>
-                  {getFieldIcon(field.type)}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-medium capitalize">{field.type}</span>
-                    {field.required && <Badge variant="outline" className="text-xs">Required</Badge>}
+      {detectedFields.length > 0 || securityFeatures.length > 0 ? (
+        <div className="space-y-6">
+          {/* Login Fields */}
+          {detectedFields.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-slate-300 mb-3">Login Fields ({detectedFields.length})</h4>
+              <div className="space-y-3">
+                {detectedFields.map((field, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${getFieldColor(field.type)}`}>
+                        {getFieldIcon(field.type)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium capitalize">{field.type}</span>
+                          {field.required && <Badge variant="outline" className="text-xs">Required</Badge>}
+                        </div>
+                        <p className="text-sm text-slate-400">{field.selector}</p>
+                        {field.placeholder && (
+                          <p className="text-xs text-slate-500">Placeholder: {field.placeholder}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-slate-400">{field.selector}</p>
-                  {field.placeholder && (
-                    <p className="text-xs text-slate-500">Placeholder: {field.placeholder}</p>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Security Features */}
+          {securityFeatures.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-slate-300 mb-3">Security Features ({securityFeatures.length})</h4>
+              <div className="space-y-3">
+                {securityFeatures.map((feature, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${getSecurityFeatureColor(feature.type)}`}>
+                        {getSecurityFeatureIcon(feature.type)}
+                      </div>
+                      <div>
+                        <span className="text-white font-medium capitalize">{feature.type}</span>
+                        <p className="text-sm text-slate-400">
+                          {feature.type === 'captcha' && 'CAPTCHA protection detected'}
+                          {feature.type === 'csrf' && 'CSRF token protection'}
+                          {feature.type === 'mfa' && 'Multi-factor authentication'}
+                          {feature.type === 'oauth' && 'OAuth/SSO integration'}
+                        </p>
+                        {feature.details && (
+                          <p className="text-xs text-slate-500">
+                            {JSON.stringify(feature.details)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-8">
           <AlertCircle className="h-12 w-12 text-slate-500 mx-auto mb-3" />
-          <p className="text-slate-400">No login fields detected yet</p>
+          <p className="text-slate-400">No login fields or security features detected yet</p>
           <p className="text-sm text-slate-500">Enter a URL above to start analysis</p>
         </div>
       )}

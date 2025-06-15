@@ -41,6 +41,19 @@ services:
     depends_on:
       - postgres
 
+  # Login Submission Microservice
+  submitter-service:
+    build:
+      context: ./services/submitter
+      dockerfile: Dockerfile
+    ports:
+      - "0.0.0.0:3003:3003"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/login_detector
+      - PORT=3003
+    depends_on:
+      - postgres
+
   # API Gateway
   api-gateway:
     build:
@@ -51,10 +64,12 @@ services:
     environment:
       - ANALYZER_SERVICE_URL=http://analyzer-service:3001
       - FORM_SERVICE_URL=http://form-service:3002
+      - SUBMITTER_SERVICE_URL=http://submitter-service:3003
       - PORT=3000
     depends_on:
       - analyzer-service
       - form-service
+      - submitter-service
 
 volumes:
   postgres_data:
