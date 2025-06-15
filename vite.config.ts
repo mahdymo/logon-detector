@@ -25,6 +25,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:3000'),
+    // For container environments, use the internal container URL
+    // For external access, the docker-compose will handle port mapping
+    'process.env.VITE_API_BASE_URL': JSON.stringify(
+      process.env.VITE_API_BASE_URL || 
+      (process.env.NODE_ENV === 'production' ? 'http://api-gateway:3000' : 'http://localhost:3000')
+    ),
   },
 }));

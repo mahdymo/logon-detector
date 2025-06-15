@@ -19,13 +19,26 @@ interface AnalysisResult {
   };
 }
 
-// Get API base URL from environment or default to localhost
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+// Get API base URL from environment
+// In container: uses internal container networking
+// For external access: uses localhost with port mapping
+const getApiBaseUrl = (): string => {
+  // Check if running in browser (frontend)
+  if (typeof window !== 'undefined') {
+    // Browser environment - use the host's localhost for external access
+    return (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+  }
+  // Server environment (if any SSR) - use container networking
+  return process.env.VITE_API_BASE_URL || 'http://api-gateway:3000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export class LoginDetector {
   static async analyzeLoginPage(url: string, useBrowser: boolean = false): Promise<DetectedField[]> {
     try {
       console.log(`Starting analysis of: ${url} (browser mode: ${useBrowser})`);
+      console.log(`Using API endpoint: ${API_BASE_URL}`);
       
       // Call our containerized API Gateway
       const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -58,8 +71,13 @@ export class LoginDetector {
     } catch (error) {
       console.error('Error analyzing login page:', error);
       
-      // Instead of fallback data, throw a proper error
-      throw new Error(`Failed to analyze login page: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure the Docker services are running with 'docker-compose up'`);
+      // Enhanced error message with container-specific guidance
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
+        throw new Error(`Failed to connect to analysis service at ${API_BASE_URL}. Make sure all Docker services are running with 'docker-compose up' and that the API Gateway is accessible.`);
+      }
+      
+      throw new Error(`Failed to analyze login page: ${errorMessage}`);
     }
   }
 

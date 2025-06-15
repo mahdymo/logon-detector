@@ -7,10 +7,14 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Enhanced CORS configuration for external access
 app.use(cors({
   origin: '*',
-  credentials: false
+  credentials: false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 app.use(express.json());
 
 // Health check for gateway
@@ -90,6 +94,10 @@ app.use('/api/analyze', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: {
     '^/api/analyze': '/analyze'
+  },
+  onError: (err, req, res) => {
+    console.error('Proxy error:', err);
+    res.status(500).json({ error: 'Service unavailable' });
   }
 }));
 
@@ -99,6 +107,10 @@ app.use('/api/forms', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: {
     '^/api/forms': ''
+  },
+  onError: (err, req, res) => {
+    console.error('Proxy error:', err);
+    res.status(500).json({ error: 'Service unavailable' });
   }
 }));
 
@@ -108,6 +120,10 @@ app.use('/api/submit', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: {
     '^/api/submit': '/submit'
+  },
+  onError: (err, req, res) => {
+    console.error('Proxy error:', err);
+    res.status(500).json({ error: 'Service unavailable' });
   }
 }));
 
@@ -117,6 +133,10 @@ app.use('/api/batch', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: {
     '^/api/batch': '/batch'
+  },
+  onError: (err, req, res) => {
+    console.error('Proxy error:', err);
+    res.status(500).json({ error: 'Service unavailable' });
   }
 }));
 
@@ -127,4 +147,5 @@ app.use('*', (req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`API Gateway running on port ${port} and accessible from all interfaces`);
+  console.log(`Health check available at: http://0.0.0.0:${port}/health`);
 });
