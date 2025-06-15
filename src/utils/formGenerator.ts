@@ -33,7 +33,8 @@ export class FormGenerator {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save form');
+        const errorText = await response.text();
+        throw new Error(`Failed to save form: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -41,7 +42,7 @@ export class FormGenerator {
       
     } catch (error) {
       console.error('Error saving form:', error);
-      throw error;
+      throw new Error(`Failed to save form: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure Docker services are running.`);
     }
   }
 
@@ -50,14 +51,15 @@ export class FormGenerator {
       const response = await fetch('http://localhost:3000/api/forms/list');
       
       if (!response.ok) {
-        throw new Error('Failed to load forms');
+        const errorText = await response.text();
+        throw new Error(`Failed to load forms: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       return await response.json();
       
     } catch (error) {
       console.error('Error loading forms:', error);
-      return [];
+      throw new Error(`Failed to load forms: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure Docker services are running.`);
     }
   }
 

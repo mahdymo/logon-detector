@@ -10,6 +10,7 @@ interface DetectedField {
 interface AnalysisResult {
   success: boolean;
   fields: DetectedField[];
+  security_features?: any[];
   error?: string;
   metadata?: {
     title?: string;
@@ -19,9 +20,9 @@ interface AnalysisResult {
 }
 
 export class LoginDetector {
-  static async analyzeLoginPage(url: string): Promise<DetectedField[]> {
+  static async analyzeLoginPage(url: string, useBrowser: boolean = false): Promise<DetectedField[]> {
     try {
-      console.log(`Starting analysis of: ${url}`);
+      console.log(`Starting analysis of: ${url} (browser mode: ${useBrowser})`);
       
       // Call our local API Gateway
       const response = await fetch('http://localhost:3000/api/analyze', {
@@ -29,11 +30,15 @@ export class LoginDetector {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ 
+          url,
+          use_browser: useBrowser 
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`Analysis failed: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const result: AnalysisResult = await response.json();
@@ -43,37 +48,15 @@ export class LoginDetector {
       }
 
       console.log('Analysis completed successfully:', result.metadata);
+      console.log('Detected fields:', result.fields);
+      
       return result.fields;
       
     } catch (error) {
       console.error('Error analyzing login page:', error);
       
-      // Fallback to mock data for development/demo purposes
-      console.log('Falling back to mock data...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      return [
-        {
-          type: 'email',
-          selector: 'input[type="email"], input[name*="email"], input[id*="email"]',
-          placeholder: 'Enter your email',
-          label: 'Email Address',
-          required: true
-        },
-        {
-          type: 'password',
-          selector: 'input[type="password"]',
-          placeholder: 'Enter your password',
-          label: 'Password',
-          required: true
-        },
-        {
-          type: 'submit',
-          selector: 'button[type="submit"], input[type="submit"]',
-          label: 'Login',
-          required: false
-        }
-      ];
+      // Instead of fallback data, throw a proper error
+      throw new Error(`Failed to analyze login page: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure the Docker services are running with 'docker-compose up -d'`);
     }
   }
 
