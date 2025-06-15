@@ -2,13 +2,13 @@
 import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Monitor, Globe, Terminal, Docker } from "lucide-react";
+import { Monitor, Globe, Terminal, Dock } from "lucide-react";
 
 export const DevModeInfo = () => {
   return (
     <Card className="p-6 bg-slate-900 border-slate-700 mb-6">
       <div className="flex items-center gap-3 mb-4">
-        <Docker className="h-6 w-6 text-blue-400" />
+        <Dock className="h-6 w-6 text-blue-400" />
         <h3 className="text-lg font-semibold text-white">Containerized Access Information</h3>
       </div>
       
