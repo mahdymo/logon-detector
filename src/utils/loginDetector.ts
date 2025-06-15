@@ -19,13 +19,16 @@ interface AnalysisResult {
   };
 }
 
+// Get API base URL from environment or default to localhost
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+
 export class LoginDetector {
   static async analyzeLoginPage(url: string, useBrowser: boolean = false): Promise<DetectedField[]> {
     try {
       console.log(`Starting analysis of: ${url} (browser mode: ${useBrowser})`);
       
-      // Call our local API Gateway
-      const response = await fetch('http://localhost:3000/api/analyze', {
+      // Call our containerized API Gateway
+      const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +59,7 @@ export class LoginDetector {
       console.error('Error analyzing login page:', error);
       
       // Instead of fallback data, throw a proper error
-      throw new Error(`Failed to analyze login page: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure the Docker services are running with 'docker-compose up -d'`);
+      throw new Error(`Failed to analyze login page: ${error instanceof Error ? error.message : 'Unknown error'}. Make sure the Docker services are running with 'docker-compose up'`);
     }
   }
 

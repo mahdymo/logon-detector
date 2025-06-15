@@ -15,12 +15,15 @@ interface GeneratedForm {
   created_at: string;
 }
 
+// Get API base URL from environment or default to localhost
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+
 export class FormGenerator {
   static async saveGeneratedForm(targetUrl: string, fields: DetectedField[]): Promise<string> {
     try {
       const htmlCode = this.generateFormHTML(targetUrl, fields);
       
-      const response = await fetch('http://localhost:3000/api/forms/save', {
+      const response = await fetch(`${API_BASE_URL}/api/forms/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +51,7 @@ export class FormGenerator {
 
   static async loadGeneratedForms(): Promise<GeneratedForm[]> {
     try {
-      const response = await fetch('http://localhost:3000/api/forms/list');
+      const response = await fetch(`${API_BASE_URL}/api/forms/list`);
       
       if (!response.ok) {
         const errorText = await response.text();

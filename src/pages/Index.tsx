@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { UrlInputForm } from '@/components/UrlInputForm';
 import { LoginFormDetector } from '@/components/LoginFormDetector';
@@ -45,6 +44,9 @@ const Index = () => {
   const [isLoadingForms, setIsLoadingForms] = useState(false);
   const { toast } = useToast();
 
+  // Get API base URL for health checks
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+
   // Check if Docker services are running
   useEffect(() => {
     checkServicesStatus();
@@ -53,7 +55,7 @@ const Index = () => {
 
   const checkServicesStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3000/health', {
+      const response = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
       });
       
@@ -170,7 +172,7 @@ const Index = () => {
           </p>
         </div>
 
-        {/* Access Information */}
+        {/* Update DevModeInfo to reflect containerized setup */}
         <DevModeInfo />
 
         {/* Services Status Alert */}
@@ -188,7 +190,7 @@ const Index = () => {
             <Alert className="bg-red-900/50 border-red-600">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="text-red-200">
-                <strong>Docker services are not running.</strong> Start them with: <code className="bg-red-800 px-2 py-1 rounded">docker-compose up -d</code>
+                <strong>Docker services are not running.</strong> Start them with: <code className="bg-red-800 px-2 py-1 rounded">docker-compose up</code>
                 <br />
                 The analyzer will not work without the backend services.
               </AlertDescription>
