@@ -6,6 +6,7 @@ import { GeneratedLoginForm } from '@/components/GeneratedLoginForm';
 import { LoginSubmissionForm } from '@/components/LoginSubmissionForm';
 import { BatchJobManager } from '@/components/BatchJobManager';
 import { FormHistory } from '@/components/FormHistory';
+import { DevModeInfo } from '@/components/DevModeInfo';
 import { LoginDetector } from '@/utils/loginDetector';
 import { FormGenerator } from '@/utils/formGenerator';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +27,13 @@ interface SecurityFeature {
   details: any;
 }
 
+interface SavedForm {
+  id: string;
+  target_url: string;
+  fields: DetectedField[];
+  created_at: string;
+}
+
 const Index = () => {
   const [detectedFields, setDetectedFields] = useState<DetectedField[]>([]);
   const [securityFeatures, setSecurityFeatures] = useState<SecurityFeature[]>([]);
@@ -33,11 +41,14 @@ const Index = () => {
   const [currentUrl, setCurrentUrl] = useState('');
   const [servicesStatus, setServicesStatus] = useState<'checking' | 'running' | 'stopped'>('checking');
   const [submissionResult, setSubmissionResult] = useState<any>(null);
+  const [savedForms, setSavedForms] = useState<SavedForm[]>([]);
+  const [isLoadingForms, setIsLoadingForms] = useState(false);
   const { toast } = useToast();
 
   // Check if Docker services are running
   useEffect(() => {
     checkServicesStatus();
+    loadSavedForms();
   }, []);
 
   const checkServicesStatus = async () => {
@@ -55,6 +66,28 @@ const Index = () => {
       console.log('Services check failed:', error);
       setServicesStatus('stopped');
     }
+  };
+
+  const loadSavedForms = async () => {
+    setIsLoadingForms(true);
+    try {
+      const forms = await FormGenerator.loadGeneratedForms();
+      setSavedForms(forms);
+    } catch (error) {
+      console.error('Failed to load saved forms:', error);
+      // Don't show error toast for this, as it's expected when services aren't running
+    } finally {
+      setIsLoadingForms(false);
+    }
+  };
+
+  const handleRefreshForms = async () => {
+    await loadSavedForms();
+    toast({
+      title: "Forms Refreshed",
+      description: "Saved forms list has been updated",
+      duration: 2000,
+    });
   };
 
   const handleAnalyze = async (url: string, useBrowser?: boolean) => {
@@ -108,6 +141,8 @@ const Index = () => {
         description: `Form saved with ID: ${formId}`,
         duration: 3000,
       });
+      // Refresh the forms list
+      await loadSavedForms();
     } catch (error) {
       console.error('Error saving form:', error);
       toast({
@@ -134,6 +169,9 @@ const Index = () => {
             Detect, analyze, and test login forms with advanced security features
           </p>
         </div>
+
+        {/* Access Information */}
+        <DevModeInfo />
 
         {/* Services Status Alert */}
         <div className="mb-6">
@@ -228,7 +266,10 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="history">
-            <FormHistory />
+            <FormHistory 
+              savedForms={savedForms}
+              onRefresh={handleRefreshForms}
+            />
           </TabsContent>
         </Tabs>
       </div>
