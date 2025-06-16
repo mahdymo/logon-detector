@@ -110,6 +110,8 @@ app.post('/analyze', async (req, res) => {
       }
 
       const html = await response.text();
+      console.log(`[${new Date().toISOString()}] HTML fetched, analyzing fields...`);
+      
       fields = analyzeHtmlForLoginFields(html);
       securityFeatures = analyzeHtmlForSecurityFeatures(html);
       metadata = {
@@ -117,6 +119,8 @@ app.post('/analyze', async (req, res) => {
         forms_found: (html.match(/<form/gi) || []).length,
         analyzed_at: new Date().toISOString()
       };
+      
+      console.log(`[${new Date().toISOString()}] Analysis complete: ${fields.length} fields found, ${securityFeatures.length} security features`);
     }
 
     // Store results in database (with error handling)
@@ -259,45 +263,115 @@ async function analyzePageWithBrowser(url) {
 async function analyzeFieldsWithBrowser(page) {
   return await page.evaluate(() => {
     const fields = [];
+    console.log('Starting browser-based field analysis...');
     
     // Find all input fields
     const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => {
+    console.log(`Found ${inputs.length} input elements`);
+    
+    inputs.forEach((input, index) => {
+      console.log(`Analyzing input ${index + 1}:`, {
+        type: input.type,
+        name: input.name,
+        id: input.id,
+        placeholder: input.placeholder,
+        className: input.className
+      });
+      
       const field = analyzeInputElement(input);
-      if (field) fields.push(field);
+      if (field) {
+        console.log(`Input ${index + 1} classified as:`, field.type);
+        fields.push(field);
+      } else {
+        console.log(`Input ${index + 1} filtered out`);
+      }
     });
     
     // Find all buttons
     const buttons = document.querySelectorAll('button, input[type="submit"]');
-    buttons.forEach(button => {
+    console.log(`Found ${buttons.length} button elements`);
+    
+    buttons.forEach((button, index) => {
+      console.log(`Analyzing button ${index + 1}:`, {
+        type: button.type,
+        textContent: button.textContent,
+        className: button.className
+      });
+      
       const field = analyzeButtonElement(button);
-      if (field) fields.push(field);
+      if (field) {
+        console.log(`Button ${index + 1} classified as:`, field.type);
+        fields.push(field);
+      }
     });
+    
+    console.log(`Browser analysis complete: ${fields.length} fields detected`);
+    return fields;
     
     function analyzeInputElement(input) {
       const type = input.type?.toLowerCase() || 'text';
       const name = input.name?.toLowerCase() || '';
       const id = input.id?.toLowerCase() || '';
-      const placeholder = input.placeholder || '';
+      const placeholder = input.placeholder?.toLowerCase() || '';
       const className = input.className?.toLowerCase() || '';
+      const ariaLabel = input.getAttribute('aria-label')?.toLowerCase() || '';
       
       let fieldType = 'other';
       
+      // Password field detection
       if (type === 'password') {
         fieldType = 'password';
-      } else if (type === 'email' || name.includes('email') || id.includes('email') || 
-                 placeholder.toLowerCase().includes('email') || className.includes('email')) {
+      }
+      // Email field detection - expanded patterns
+      else if (type === 'email' || 
+               name.includes('email') || name.includes('mail') ||
+               id.includes('email') || id.includes('mail') ||
+               placeholder.includes('email') || placeholder.includes('mail') ||
+               className.includes('email') || className.includes('mail') ||
+               ariaLabel.includes('email') || ariaLabel.includes('mail')) {
         fieldType = 'email';
-      } else if (name.includes('user') || id.includes('user') || placeholder.toLowerCase().includes('user') ||
-                 name.includes('login') || id.includes('login') || placeholder.toLowerCase().includes('login') ||
-                 className.includes('user') || className.includes('login')) {
+      }
+      // Username field detection - expanded patterns
+      else if (name.includes('user') || name.includes('login') || name.includes('account') || 
+               name.includes('signin') || name.includes('username') ||
+               id.includes('user') || id.includes('login') || id.includes('account') || 
+               id.includes('signin') || id.includes('username') ||
+               placeholder.includes('user') || placeholder.includes('login') || 
+               placeholder.includes('account') || placeholder.includes('signin') ||
+               className.includes('user') || className.includes('login') || 
+               className.includes('account') || className.includes('signin') ||
+               ariaLabel.includes('user') || ariaLabel.includes('login') || 
+               ariaLabel.includes('account') || ariaLabel.includes('signin')) {
         fieldType = 'username';
-      } else if (type === 'submit') {
+      }
+      // Submit button detection
+      else if (type === 'submit') {
         fieldType = 'submit';
       }
+      // For text inputs, be more inclusive - check if it might be a login field
+      else if (type === 'text' && (
+        // If it's in a form with a password field, it's likely a username field
+        document.querySelector('input[type="password"]') ||
+        // If it has login-related context
+        name.includes('name') || id.includes('name') ||
+        placeholder.includes('name') || placeholder.includes('enter') ||
+        // Common login field patterns
+        name === 'login' || id === 'login' || name === 'user' || id === 'user'
+      )) {
+        fieldType = 'username';
+      }
       
-      if (fieldType === 'other' && (type === 'text' || type === 'email')) {
-        return null;
+      // Don't filter out fields as aggressively - include more borderline cases
+      if (fieldType === 'other' && type === 'text') {
+        // If there's a password field on the page, include text fields that might be username
+        const hasPasswordField = document.querySelector('input[type="password"]');
+        if (hasPasswordField && (name || id || placeholder)) {
+          fieldType = 'username'; // Assume it's a username field
+        }
+      }
+      
+      if (fieldType === 'other') {
+        return null; // Only filter out if truly unrelated
       }
       
       const selector = id ? `#${id}` : name ? `input[name="${name}"]` : `input[type="${type}"]`;
@@ -305,8 +379,9 @@ async function analyzeFieldsWithBrowser(page) {
       return {
         type: fieldType,
         selector,
-        placeholder: placeholder || undefined,
-        label: placeholder || input.labels?.[0]?.textContent || (fieldType.charAt(0).toUpperCase() + fieldType.slice(1)),
+        placeholder: input.placeholder || undefined,
+        label: input.placeholder || input.labels?.[0]?.textContent || ariaLabel || 
+               (fieldType.charAt(0).toUpperCase() + fieldType.slice(1)),
         required: input.required || false
       };
     }
@@ -316,8 +391,11 @@ async function analyzeFieldsWithBrowser(page) {
       const text = button.textContent?.trim().toLowerCase() || '';
       const className = button.className?.toLowerCase() || '';
       
-      if (type === 'submit' || text.includes('login') || text.includes('sign in') || 
-          text.includes('submit') || className.includes('login') || className.includes('submit')) {
+      if (type === 'submit' || 
+          text.includes('login') || text.includes('sign in') || text.includes('log in') ||
+          text.includes('submit') || text.includes('enter') || text.includes('go') ||
+          className.includes('login') || className.includes('submit') ||
+          className.includes('signin') || className.includes('btn-primary')) {
         return {
           type: 'submit',
           selector: button.id ? `#${button.id}` : 'button[type="submit"]',
@@ -328,8 +406,6 @@ async function analyzeFieldsWithBrowser(page) {
       
       return null;
     }
-    
-    return fields;
   });
 }
 
@@ -387,31 +463,93 @@ async function detectSecurityFeaturesWithBrowser(page) {
 
 function analyzeHtmlForLoginFields(html) {
   const fields = [];
+  console.log('Starting HTML-based field analysis...');
   
-  // Simple regex-based analysis
+  // Enhanced regex patterns for modern HTML
   const inputRegex = /<input[^>]*>/gi;
   const buttonRegex = /<button[^>]*>.*?<\/button>/gi;
   
   let match;
+  let inputCount = 0;
   
   // Analyze input fields
   while ((match = inputRegex.exec(html)) !== null) {
+    inputCount++;
     const inputTag = match[0];
+    console.log(`Analyzing HTML input ${inputCount}:`, inputTag.substring(0, 100));
+    
     const field = parseInputField(inputTag);
     if (field) {
+      console.log(`HTML input ${inputCount} classified as:`, field.type);
       fields.push(field);
+    } else {
+      console.log(`HTML input ${inputCount} filtered out`);
     }
   }
   
+  let buttonCount = 0;
   // Analyze buttons
   while ((match = buttonRegex.exec(html)) !== null) {
+    buttonCount++;
     const buttonTag = match[0];
+    console.log(`Analyzing HTML button ${buttonCount}:`, buttonTag.substring(0, 100));
+    
     const field = parseButtonField(buttonTag);
     if (field) {
+      console.log(`HTML button ${buttonCount} classified as:`, field.type);
       fields.push(field);
     }
   }
   
+  console.log(`HTML analysis complete: ${fields.length} fields detected from ${inputCount} inputs and ${buttonCount} buttons`);
+  
+  // Fallback: if no fields detected but there's a password field, be more inclusive
+  if (fields.length === 0 && html.includes('type="password"')) {
+    console.log('No fields detected but password field exists, applying fallback detection...');
+    const fallbackFields = applyFallbackDetection(html);
+    fields.push(...fallbackFields);
+  }
+  
+  return fields;
+}
+
+function applyFallbackDetection(html) {
+  console.log('Applying fallback detection for missed login fields...');
+  const fields = [];
+  
+  // Find all input tags and be very inclusive
+  const inputRegex = /<input[^>]*>/gi;
+  let match;
+  
+  while ((match = inputRegex.exec(html)) !== null) {
+    const inputTag = match[0];
+    const typeMatch = inputTag.match(/type=['"]([^'"]*)['"]/i);
+    const nameMatch = inputTag.match(/name=['"]([^'"]*)['"]/i);
+    const idMatch = inputTag.match(/id=['"]([^'"]*)['"]/i);
+    
+    const type = typeMatch?.[1]?.toLowerCase() || 'text';
+    const name = nameMatch?.[1] || '';
+    const id = idMatch?.[1] || '';
+    
+    if (type === 'password') {
+      fields.push({
+        type: 'password',
+        selector: id ? `#${id}` : name ? `input[name="${name}"]` : 'input[type="password"]',
+        label: 'Password',
+        required: inputTag.includes('required')
+      });
+    } else if (type === 'text' || type === 'email') {
+      // In fallback mode, include any text/email field
+      fields.push({
+        type: type === 'email' ? 'email' : 'username',
+        selector: id ? `#${id}` : name ? `input[name="${nameMatch?.[1]}"]` : `input[type="${type}"]`,
+        label: type === 'email' ? 'Email' : 'Username',
+        required: inputTag.includes('required')
+      });
+    }
+  }
+  
+  console.log(`Fallback detection found ${fields.length} fields`);
   return fields;
 }
 
@@ -450,37 +588,67 @@ function parseInputField(inputTag) {
   const nameMatch = inputTag.match(/name=['"]([^'"]*)['"]/i);
   const idMatch = inputTag.match(/id=['"]([^'"]*)['"]/i);
   const placeholderMatch = inputTag.match(/placeholder=['"]([^'"]*)['"]/i);
+  const classMatch = inputTag.match(/class=['"]([^'"]*)['"]/i);
+  const ariaLabelMatch = inputTag.match(/aria-label=['"]([^'"]*)['"]/i);
   const requiredMatch = inputTag.match(/required/i);
   
   const type = typeMatch?.[1]?.toLowerCase() || 'text';
   const name = nameMatch?.[1]?.toLowerCase() || '';
   const id = idMatch?.[1]?.toLowerCase() || '';
-  const placeholder = placeholderMatch?.[1] || '';
+  const placeholder = placeholderMatch?.[1]?.toLowerCase() || '';
+  const className = classMatch?.[1]?.toLowerCase() || '';
+  const ariaLabel = ariaLabelMatch?.[1]?.toLowerCase() || '';
   
   let fieldType = 'other';
   
+  // Enhanced detection patterns
   if (type === 'password') {
     fieldType = 'password';
-  } else if (type === 'email' || name.includes('email') || id.includes('email') || placeholder.toLowerCase().includes('email')) {
+  } else if (type === 'email' || 
+             name.includes('email') || name.includes('mail') ||
+             id.includes('email') || id.includes('mail') ||
+             placeholder.includes('email') || placeholder.includes('mail') ||
+             className.includes('email') || className.includes('mail') ||
+             ariaLabel.includes('email') || ariaLabel.includes('mail')) {
     fieldType = 'email';
-  } else if (name.includes('user') || id.includes('user') || placeholder.toLowerCase().includes('user') || 
-             name.includes('login') || id.includes('login') || placeholder.toLowerCase().includes('login')) {
+  } else if (name.includes('user') || name.includes('login') || name.includes('account') || 
+             name.includes('signin') || name.includes('username') || name.includes('uname') ||
+             id.includes('user') || id.includes('login') || id.includes('account') || 
+             id.includes('signin') || id.includes('username') || id.includes('uname') ||
+             placeholder.includes('user') || placeholder.includes('login') || 
+             placeholder.includes('account') || placeholder.includes('signin') ||
+             placeholder.includes('username') || placeholder.includes('name') ||
+             className.includes('user') || className.includes('login') || 
+             className.includes('account') || className.includes('signin') ||
+             ariaLabel.includes('user') || ariaLabel.includes('login') || 
+             ariaLabel.includes('account') || ariaLabel.includes('signin')) {
     fieldType = 'username';
   } else if (type === 'submit') {
     fieldType = 'submit';
   }
+  // Be more inclusive with text fields
+  else if (type === 'text' && (name || id || placeholder)) {
+    // If it has any identifying attributes, treat as potential username field
+    fieldType = 'username';
+  }
   
-  if (fieldType === 'other' && (type === 'text' || type === 'email')) {
+  // Only filter out if it's truly not relevant
+  if (fieldType === 'other' && !name && !id && !placeholder) {
     return null;
   }
   
-  const selector = id ? `#${id}` : name ? `input[name="${name}"]` : `input[type="${type}"]`;
+  if (fieldType === 'other') {
+    fieldType = 'username'; // Default to username for unclassified fields with attributes
+  }
+  
+  const selector = id ? `#${id}` : name ? `input[name="${nameMatch?.[1]}"]` : `input[type="${type}"]`;
   
   return {
     type: fieldType,
     selector,
-    placeholder: placeholder || undefined,
-    label: placeholder || (fieldType.charAt(0).toUpperCase() + fieldType.slice(1)),
+    placeholder: placeholderMatch?.[1] || undefined,
+    label: placeholderMatch?.[1] || ariaLabelMatch?.[1] || 
+           (fieldType.charAt(0).toUpperCase() + fieldType.slice(1)),
     required: !!requiredMatch
   };
 }
@@ -488,15 +656,23 @@ function parseInputField(inputTag) {
 function parseButtonField(buttonTag) {
   const typeMatch = buttonTag.match(/type=['"]([^'"]*)['"]/i);
   const textMatch = buttonTag.match(/>([^<]*)</);
+  const classMatch = buttonTag.match(/class=['"]([^'"]*)['"]/i);
   
   const type = typeMatch?.[1]?.toLowerCase() || 'button';
   const text = textMatch?.[1]?.trim().toLowerCase() || '';
+  const className = classMatch?.[1]?.toLowerCase() || '';
   
-  if (type === 'submit' || text.includes('login') || text.includes('sign in') || text.includes('submit')) {
+  if (type === 'submit' || 
+      text.includes('login') || text.includes('sign in') || text.includes('log in') ||
+      text.includes('submit') || text.includes('enter') || text.includes('go') ||
+      text.includes('continue') || text.includes('next') ||
+      className.includes('login') || className.includes('submit') ||
+      className.includes('signin') || className.includes('btn-primary') ||
+      className.includes('btn-login')) {
     return {
       type: 'submit',
       selector: 'button[type="submit"]',
-      label: text || 'Submit',
+      label: textMatch?.[1]?.trim() || 'Submit',
       required: false
     };
   }
