@@ -1,6 +1,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 require('dotenv').config();
 
@@ -39,6 +40,13 @@ app.use((req, res, next) => {
   
   next();
 });
+
+// Serve static files from frontend build
+app.use(express.static('/app/frontend-build', {
+  maxAge: '1y',
+  etag: true,
+  lastModified: true
+}));
 
 // Health check for gateway
 app.get('/health', (req, res) => {
@@ -149,6 +157,8 @@ const createEnhancedProxy = (target, pathRewrite) => {
   });
 };
 
+// API Routes - these must come before the catch-all static file handler
+
 // Proxy to analyzer service with enhanced configuration
 app.use('/api/analyze', createEnhancedProxy(
   process.env.ANALYZER_SERVICE_URL,
@@ -173,9 +183,15 @@ app.use('/api/batch', createEnhancedProxy(
   { '^/api/batch': '/batch' }
 ));
 
-// Catch all for unmatched routes
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// Catch-all handler for client-side routing (SPA)
+app.get('*', (req, res) => {
+  // Don't handle API routes that weren't matched above
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  
+  // Serve index.html for all non-API routes (client-side routing)
+  res.sendFile('/app/frontend-build/index.html');
 });
 
 // Global error handler
@@ -187,6 +203,7 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`API Gateway running on port ${port} and accessible from all interfaces`);
+  console.log(`API Gateway with integrated frontend running on port ${port} and accessible from all interfaces`);
   console.log(`Health check available at: http://0.0.0.0:${port}/health`);
+  console.log(`Frontend served from: /app/frontend-build`);
 });

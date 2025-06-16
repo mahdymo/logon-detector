@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,16 +45,9 @@ export const LoginSubmissionForm = ({
   const [submissionResult, setSubmissionResult] = useState<any>(null);
   const { toast } = useToast();
 
-  // Get API base URL dynamically
+  // Use relative API URL since everything is served from the same origin (port 80)
   const getApiBaseUrl = () => {
-    const currentHost = window.location.hostname;
-    
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      return 'http://localhost:3000';
-    }
-    
-    const protocol = window.location.protocol;
-    return `${protocol}//${currentHost}:3000`;
+    return window.location.origin; // No port needed, everything is on port 80
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

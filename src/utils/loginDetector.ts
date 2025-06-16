@@ -21,26 +21,17 @@ interface AnalysisResult {
   duration_ms?: number;
 }
 
-// Get API base URL with dynamic external/internal detection
+// Use relative API paths since everything is served from the same origin (port 80)
 const getApiBaseUrl = (): string => {
-  // Check if running in browser (frontend)
+  // Since the gateway serves both frontend and API on the same port,
+  // we can use relative paths or current origin
   if (typeof window !== 'undefined') {
-    const currentHost = window.location.hostname;
-    const currentPort = window.location.port;
-    
-    // If we're accessing from localhost or 127.0.0.1, use the mapped port for API
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      return 'http://localhost:3000';
-    }
-    
-    // For external access (Docker container accessed from outside)
-    // Use the same host but with API gateway port
-    const protocol = window.location.protocol;
-    return `${protocol}//${currentHost}:3000`;
+    // In browser - use current origin (no port needed, defaults to 80)
+    return window.location.origin;
   }
   
-  // Server environment (if any SSR) - use container networking
-  return process.env.VITE_API_BASE_URL || 'http://api-gateway:3000';
+  // Server environment fallback (shouldn't be used in this setup)
+  return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -53,7 +44,7 @@ export class LoginDetector {
       
       const startTime = Date.now();
       
-      // Call our containerized API Gateway - let server handle timeouts
+      // Call our API Gateway with relative path - everything is on port 80 now
       const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST',
         headers: {
@@ -98,7 +89,7 @@ export class LoginDetector {
       let errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
-        errorMessage = `Failed to connect to analysis service at ${API_BASE_URL}. Make sure all Docker services are running with 'docker-compose up' and that the API Gateway is accessible on port 3000.`;
+        errorMessage = `Failed to connect to analysis service. Make sure all Docker services are running with 'docker-compose up' and that the application is accessible on port 80.`;
       } else if (errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
         errorMessage = 'Analysis timeout - the page took too long to analyze. The page may be too complex or have heavy JavaScript. Try disabling browser mode for faster analysis.';
       } else if (errorMessage.includes('408') || errorMessage.includes('Request timeout')) {

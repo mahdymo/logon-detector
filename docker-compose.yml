@@ -2,86 +2,83 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database - Internal only
   postgres:
     image: postgres:15
     environment:
       POSTGRES_DB: login_detector
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "0.0.0.0:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # No external ports - internal communication only
 
-  # Login Page Analyzer Microservice
+  # Login Page Analyzer Microservice - Internal only
   analyzer-service:
     build:
       context: ./services/analyzer
       dockerfile: Dockerfile
-    ports:
-      - "0.0.0.0:3001:3001"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/login_detector
       - PORT=3001
     depends_on:
       - postgres
+    # No external ports - internal communication only
 
-  # Form Storage Microservice
+  # Form Storage Microservice - Internal only
   form-service:
     build:
       context: ./services/forms
       dockerfile: Dockerfile
-    ports:
-      - "0.0.0.0:3002:3002"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/login_detector
       - PORT=3002
     depends_on:
       - postgres
+    # No external ports - internal communication only
 
-  # Login Submission Microservice
+  # Login Submission Microservice - Internal only
   submitter-service:
     build:
       context: ./services/submitter
       dockerfile: Dockerfile
-    ports:
-      - "0.0.0.0:3003:3003"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/login_detector
       - PORT=3003
     depends_on:
       - postgres
+    # No external ports - internal communication only
 
-  # API Gateway
+  # Frontend Build Stage
+  frontend-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    volumes:
+      - frontend-build:/app/dist
+
+  # API Gateway with Integrated Frontend - ONLY external access point
   api-gateway:
     build:
       context: ./services/gateway
       dockerfile: Dockerfile
     ports:
-      - "0.0.0.0:3000:3000"
+      - "0.0.0.0:80:3000"  # ONLY external port - everything goes through here
     environment:
       - ANALYZER_SERVICE_URL=http://analyzer-service:3001
       - FORM_SERVICE_URL=http://form-service:3002
       - SUBMITTER_SERVICE_URL=http://submitter-service:3003
       - PORT=3000
+    volumes:
+      - frontend-build:/app/frontend-build:ro
     depends_on:
       - analyzer-service
       - form-service
       - submitter-service
-
-  # Frontend GUI
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "0.0.0.0:5173:80"
-    environment:
-      - VITE_API_BASE_URL=http://api-gateway:3000
-    depends_on:
-      - api-gateway
+      - frontend-builder
 
 volumes:
   postgres_data:
+  frontend-build:
