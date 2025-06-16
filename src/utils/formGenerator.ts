@@ -15,8 +15,15 @@ interface GeneratedForm {
   created_at: string;
 }
 
-// Get API base URL from environment or default to localhost
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+// Use same origin for API calls since everything is served from port 80
+const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin; // This will be port 80
+  }
+  return '';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export class FormGenerator {
   static async saveGeneratedForm(targetUrl: string, fields: DetectedField[]): Promise<string> {

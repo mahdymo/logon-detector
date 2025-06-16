@@ -44,18 +44,9 @@ const Index = () => {
   const [isLoadingForms, setIsLoadingForms] = useState(false);
   const { toast } = useToast();
 
-  // Get API base URL dynamically for health checks
+  // Use same origin for API calls since everything is served from port 80
   const getApiBaseUrl = () => {
-    const currentHost = window.location.hostname;
-    
-    // If we're accessing from localhost or 127.0.0.1, use the mapped port for API
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      return 'http://localhost:3000';
-    }
-    
-    // For external access, use the same host but with API gateway port
-    const protocol = window.location.protocol;
-    return `${protocol}//${currentHost}:3000`;
+    return window.location.origin; // This will be port 80
   };
 
   const API_BASE_URL = getApiBaseUrl();
