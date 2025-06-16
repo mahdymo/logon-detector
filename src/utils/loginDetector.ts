@@ -1,3 +1,4 @@
+
 interface DetectedField {
   type: 'username' | 'email' | 'password' | 'submit' | 'other';
   selector: string;
@@ -21,15 +22,24 @@ interface AnalysisResult {
   duration_ms?: number;
 }
 
-// Get API base URL from environment
-// In container: uses internal container networking
-// For external access: uses localhost with port mapping
+// Get API base URL with dynamic external/internal detection
 const getApiBaseUrl = (): string => {
   // Check if running in browser (frontend)
   if (typeof window !== 'undefined') {
-    // Browser environment - use the host's localhost for external access
-    return (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000';
+    const currentHost = window.location.hostname;
+    const currentPort = window.location.port;
+    
+    // If we're accessing from localhost or 127.0.0.1, use the mapped port for API
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
+    
+    // For external access (Docker container accessed from outside)
+    // Use the same host but with API gateway port
+    const protocol = window.location.protocol;
+    return `${protocol}//${currentHost}:3000`;
   }
+  
   // Server environment (if any SSR) - use container networking
   return process.env.VITE_API_BASE_URL || 'http://api-gateway:3000';
 };
@@ -104,7 +114,7 @@ export class LoginDetector {
       if (error instanceof Error && error.name === 'AbortError') {
         errorMessage = 'Analysis timeout - the page took too long to analyze. Try disabling browser mode or use a simpler page.';
       } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
-        errorMessage = `Failed to connect to analysis service at ${API_BASE_URL}. Make sure all Docker services are running with 'docker-compose up' and that the API Gateway is accessible.`;
+        errorMessage = `Failed to connect to analysis service at ${API_BASE_URL}. Make sure all Docker services are running with 'docker-compose up' and that the API Gateway is accessible on port 3000.`;
       } else if (errorMessage.includes('timeout')) {
         errorMessage = 'Analysis timeout - the page took too long to load. Try again or disable browser mode for faster analysis.';
       }

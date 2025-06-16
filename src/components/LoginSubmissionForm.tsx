@@ -46,6 +46,18 @@ export const LoginSubmissionForm = ({
   const [submissionResult, setSubmissionResult] = useState<any>(null);
   const { toast } = useToast();
 
+  // Get API base URL dynamically
+  const getApiBaseUrl = () => {
+    const currentHost = window.location.hostname;
+    
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
+    
+    const protocol = window.location.protocol;
+    return `${protocol}//${currentHost}:3000`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!credentials.username || !credentials.password) {
@@ -64,7 +76,10 @@ export const LoginSubmissionForm = ({
     try {
       console.log('Submitting login attempt...');
       
-      const response = await fetch('http://localhost:3000/api/login-attempt', {
+      const apiBaseUrl = getApiBaseUrl();
+      console.log(`Using API endpoint: ${apiBaseUrl}`);
+      
+      const response = await fetch(`${apiBaseUrl}/api/login-attempt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

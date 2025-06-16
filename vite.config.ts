@@ -25,11 +25,10 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    // For container environments, use the internal container URL
-    // For external access, the docker-compose will handle port mapping
+    // The frontend will now dynamically detect the API URL at runtime
+    // This allows it to work both when accessed locally and externally
     'process.env.VITE_API_BASE_URL': JSON.stringify(
-      process.env.VITE_API_BASE_URL || 
-      (process.env.NODE_ENV === 'production' ? 'http://api-gateway:3000' : 'http://localhost:3000')
+      process.env.VITE_API_BASE_URL || null
     ),
   },
 }));
