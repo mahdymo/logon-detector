@@ -1,4 +1,3 @@
-
 interface DetectedField {
   type: 'username' | 'email' | 'password' | 'submit' | 'other';
   selector: string;
@@ -54,69 +53,56 @@ export class LoginDetector {
       
       const startTime = Date.now();
       
-      // Create AbortController for request timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 150000); // 2.5 minutes timeout
-      
-      try {
-        // Call our containerized API Gateway with extended timeout
-        const response = await fetch(`${API_BASE_URL}/api/analyze`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            url,
-            use_browser: useBrowser 
-          }),
-          signal: controller.signal
-        });
+      // Call our containerized API Gateway - let server handle timeouts
+      const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          url,
+          use_browser: useBrowser 
+        })
+      });
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorMessage = `Analysis failed: ${response.status} ${response.statusText}`;
-          
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.error || errorMessage;
-          } catch {
-            // Keep original error message if JSON parsing fails
-          }
-          
-          throw new Error(errorMessage);
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Analysis failed: ${response.status} ${response.statusText}`;
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          // Keep original error message if JSON parsing fails
         }
-
-        const result: AnalysisResult = await response.json();
         
-        if (!result.success) {
-          throw new Error(result.error || result.debug_error || 'Analysis failed');
-        }
-
-        const duration = Date.now() - startTime;
-        console.log(`Analysis completed successfully in ${duration}ms:`, result.metadata);
-        console.log('Detected fields:', result.fields);
-        
-        return result.fields;
-        
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        throw fetchError;
+        throw new Error(errorMessage);
       }
+
+      const result: AnalysisResult = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || result.debug_error || 'Analysis failed');
+      }
+
+      const duration = Date.now() - startTime;
+      console.log(`Analysis completed successfully in ${duration}ms:`, result.metadata);
+      console.log('Detected fields:', result.fields);
+      
+      return result.fields;
       
     } catch (error) {
       console.error('Error analyzing login page:', error);
       
-      // Enhanced error message with container-specific guidance
+      // Enhanced error message with specific guidance
       let errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.name === 'AbortError') {
-        errorMessage = 'Analysis timeout - the page took too long to analyze. Try disabling browser mode or use a simpler page.';
-      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
         errorMessage = `Failed to connect to analysis service at ${API_BASE_URL}. Make sure all Docker services are running with 'docker-compose up' and that the API Gateway is accessible on port 3000.`;
-      } else if (errorMessage.includes('timeout')) {
-        errorMessage = 'Analysis timeout - the page took too long to load. Try again or disable browser mode for faster analysis.';
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
+        errorMessage = 'Analysis timeout - the page took too long to analyze. The page may be too complex or have heavy JavaScript. Try disabling browser mode for faster analysis.';
+      } else if (errorMessage.includes('408') || errorMessage.includes('Request timeout')) {
+        errorMessage = 'Analysis timeout - the server took too long to process the request. Try again or use a simpler page.';
       }
       
       throw new Error(`Failed to analyze login page: ${errorMessage}`);
